@@ -5,13 +5,13 @@ cabal-version: 1.12
 -- see: https://github.com/sol/hpack
 
 name:           helloworld
-version:        0.3.0.0
+version:        0.7.0.0
 description:    Please see the README on GitHub at <https://github.com/githubuser/helloworld#readme>
-homepage:       https://github.com/githubuser/helloworld#readme
-bug-reports:    https://github.com/githubuser/helloworld/issues
-author:         Author name here
+homepage:       https://github.com/heightweight/pong#readme
+bug-reports:    https://github.com/heightweight/pong/issues
+author:         Boiko Volodymyr
 maintainer:     example@example.com
-copyright:      2021 Author name here
+copyright:      2021 Heightweight
 license:        BSD3
 license-file:   LICENSE
 build-type:     Simple
@@ -21,7 +21,7 @@ extra-source-files:
 
 source-repository head
   type: git
-  location: https://github.com/githubuser/helloworld
+  location: https://github.com/heightweight/pong
 
 library
   exposed-modules:

@@ -2,13 +2,15 @@ module Main where
 
 import Lib
 import Graphics.Gloss
+import Graphics.Gloss.Interface.Pure.Game
 
 data Game = Game {
 p1 :: Float,
 p2 :: Float,
 ball :: Point,
 dir :: Float,
-vel :: Float
+vel :: Float,
+nextPos :: Float
 }
 -- (800, 800)
 
@@ -29,7 +31,7 @@ normalize :: Float -> Float
 normalize f = max 11 . min 789 $ f
 
 moveBall :: Game -> Float -> Game
-moveBall g f = Game (p1 g) (p2 g) (xt, yt) dirn (vel g)
+moveBall g f = g {dir = dirn, ball = (xt, yt)}
  where
   xn = fst (ball g) + vel g * cos (dir g)
   yn = snd (ball g) + vel g * sin (dir g)
@@ -48,13 +50,29 @@ moveBall g f = Game (p1 g) (p2 g) (xt, yt) dirn (vel g)
   xt = (vel g * cos dirn) + normalize (fst (ball g))
   yt = (vel g * sin dirn) + normalize (snd (ball g))
 
-next _ f g = moveBall g f
+movePaddle :: Event -> Game -> Game
+movePaddle (EventMotion (x,y)) g = g {nextPos = max 50 . min 750 $ (x+400)}
+movePaddle _ g = g
+
+updatePaddle :: Game -> Game
+updatePaddle g = g {p1 = nextPos g}
+
+eventTracker :: IO ()
+eventTracker
+ = play (InWindow "GameEvent" (700, 100) (10, 10))
+        white
+        100
+        ""
+        (\str     -> Translate (-340) 0 $ Scale 0.1 0.1 $ Text str)
+        (\event _ -> show event)
+        (\_ world -> world)
 
 main :: IO ()
-main = simulate
+main = play
   (InWindow "pong" (800, 800) (300, 300))
   white
   60
-  (Game 400 400 (400, 400) 0.72 5)
+  (Game 400 400 (400, 400) 0.72 5 400)
   gameDraw
-  next
+  movePaddle
+  updatePaddle . (flip moveBall)
