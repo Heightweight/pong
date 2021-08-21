@@ -22,11 +22,15 @@ ballDraw (x, y) = Translate x y (Circle 10)
 gameDraw :: Game -> Picture
 gameDraw g = translate (-400) (-400) $ pictures [playerDraw 1 $ p1 g, playerDraw 2 $ p2 g, ballDraw $ ball g, text (show (dir g))]
 
+paddleAngle :: Float -> Float -> Float
+paddleAngle paddle ball = (pi/8)*(1 + (ball - paddle)/50)/2 + 7*(pi/8)*(1 -(1 + (ball - paddle)/50)/2)
+
+normalize :: Float -> Float
+normalize f = max 11 . min 789 $ f
+
 moveBall :: Game -> Float -> Game
 moveBall g f = Game (p1 g) (p2 g) (xt, yt) dirn (vel g)
  where
-  x1n = max 11 $ min 789 (fst $ ball g)
-  y1n = max 11 $ min 789 (snd $ ball g)
   xn = fst (ball g) + vel g * cos (dir g)
   yn = snd (ball g) + vel g * sin (dir g)
   dirx
@@ -37,10 +41,12 @@ moveBall g f = Game (p1 g) (p2 g) (xt, yt) dirn (vel g)
     |otherwise = -1
   dirn
     |dirx == -1 = pi - diry * dir g
-    |otherwise = diry * dir g
-  xt = x1n + vel g * cos dirn
-  yt = y1n + vel g * sin dirn
-
+    |(diry == -1) && (dirx == 1) = diry * dir g
+    |max (p1 g - 50) (min (p1 g + 50) xn) == xn && (yn <= 30) = paddleAngle (p1 g) xn
+    |max (p2 g - 50) (min (p2 g + 50) xn) == xn && (yn >= 770) = - paddleAngle (p2 g) xn
+    |otherwise = (dir g)
+  xt = (vel g * cos dirn) + normalize (fst (ball g))
+  yt = (vel g * sin dirn) + normalize (snd (ball g))
 
 next _ f g = moveBall g f
 
@@ -49,6 +55,6 @@ main = simulate
   (InWindow "pong" (800, 800) (300, 300))
   white
   60
-  (Game 400 400 (400, 400) 0.7 2)
+  (Game 400 400 (400, 400) 0.72 5)
   gameDraw
   next
