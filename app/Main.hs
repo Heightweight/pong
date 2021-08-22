@@ -127,9 +127,11 @@ gameOver w
   |(p2Score w) == 7 = w {result = AI}
   |otherwise = w
 
-updateWorld :: Float -> World -> World
-updateWorld seconds world@(World _ _ _ Ongoing _ ) = gameOver . scoreCheck . aiMove $ moveBall seconds world
-updateWorld _ world = world
+updateWorld :: Float -> World -> IO World
+updateWorld seconds world@(World _ _ _ Ongoing _ ) = do
+  return $ gameOver . scoreCheck . aiMove $ moveBall seconds world
+updateWorld _ world = do
+  return world
 
 eventHandler :: Event -> World -> IO World
 eventHandler (EventMotion (x,y)) world =  do
@@ -149,17 +151,5 @@ eventHandler (EventKey (Char 's') Down _ _) world = case (result world) of
 eventHandler _ world = do
   return world
 
-
-unsafeResultSave :: World -> World
-unsafeResultSave world = case (result world) of
-  Player -> unsafePerformIO $ do
-    currDir <- getCurrentDirectory
-    let file = currDir ++ "/records"
-    appendFile file (timeAsText world ++ " " ++ (scoreAsText world))
-    return world
-  otherwise -> world
-
-
-type WorldIO = StateT World IO
 
 main = undefined
