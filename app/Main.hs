@@ -8,8 +8,10 @@ import System.IO.Unsafe (unsafePerformIO)
 import Control.Monad.Trans
 import Control.Monad.Trans.State
 import System.Directory
+import Data.List.Split
+import Data.List
 
-data Result = Ongoing | Player | AI
+data Result = Ongoing | Player | AI | Idle
 
 data World = World {
 game :: Game,
@@ -29,7 +31,7 @@ vel :: Float
 -- (800, 800)
 
 startWorld :: World
-startWorld = (World (Game 400 400 (400, 400) 0.72 300) 0 0 Ongoing 0)
+startWorld = (World (Game 400 400 (400, 400) 0.72 300) 0 0 Idle 0)
 
 simulationRate :: Int
 simulationRate = 60
@@ -66,14 +68,17 @@ defeat world = pictures [translate (-350) 0 . text $ "You lose!", translate 0 (-
 
 type Record = String
 
-recordUncurry :: Record -> (String, String)
-recordUncurry r = unveil ("", r) where
-  unveil (t, "") = (t, "")
-  unveil (t, ' ':ss) = (t, ss)
-  unveil (t, s:ss) = unveil (t ++ [s], ss)
+recordUncurry :: Record -> (Float, Int)
+recordUncurry r = (time, score) where
+  records = splitOn " " r
+  undone = map (splitOn ":") records
+  time :: Float
+  score :: Int
+  time = 60*(read ((head undone) !! 0)) + read ((head undone) !! 1) + (read ((head undone) !! 2))/100
+  score = read . last . last $ undone
 
 leaderboardSort :: [Record] -> [Record]
-leaderboardSort records = undefined
+leaderboardSort = sortOn (fst . recordUncurry)
 
 leaderboard :: IO Picture
 leaderboard = do
@@ -81,7 +86,11 @@ leaderboard = do
   let file = currDir ++ "/records"
   content <- readFile file
   let records = lines content
-  return $ text "oof"
+  let top10 = take 10 . nub . leaderboardSort $ records
+  return $ pictures (zipWith ($) (map (\n -> translate 0 (n*50)) [1..10]) (map text top10))
+
+idle :: IO Picture
+idle = undefined
 
 
 worldDraw :: World -> IO Picture
@@ -90,9 +99,11 @@ worldDraw world = case (result world) of
     let g = game world
     return $ pictures [(rotate (-90) $ translate (-400) (-400) $ pictures [playerDraw 1 $ p1 g, playerDraw 2 $ p2 g, ballDraw $ ball g]), translate (-400) (-400) . text . scoreAsText $ world, displayTime world]
   Player -> do
-    return $ victory world
+    leaders <- leaderboard
+    return $ pictures [victory world, translate (-200) (-100) . scale 0.2 0.2 $ leaders]
   otherwise -> do
-    return $ defeat world
+    leaders <- leaderboard
+    return $ pictures [defeat world, translate (-200) (-100) . scale 0.2 0.2 $ leaders]
 --  Ongoing -> pictures [(rotate (-90) $ translate (-400) (-400) $ pictures [playerDraw 1 $ p1 g, playerDraw 2 $ p2 g, ballDraw $ ball g]), translate (-400) (-400) . text . scoreAsText $ world, displayTime world] where
 --    g = game world
 --  Player -> victory world
@@ -173,7 +184,7 @@ eventHandler _ world = do
 
 main :: IO ()
 main = playIO
-  (InWindow "pong" (800, 800) (300, 300))
+  (InWindow "pong!" (800, 800) (0, 0))
   white
   simulationRate
   startWorld
