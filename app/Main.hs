@@ -4,6 +4,10 @@ import Lib
 import Graphics.Gloss
 import Graphics.Gloss.Interface.Pure.Game
 import Text.Printf (printf)
+import System.IO.Unsafe (unsafePerformIO)
+import Control.Monad.Trans
+import Control.Monad.Trans.State
+import System.Directory
 
 data Result = Ongoing | Player | AI
 
@@ -38,12 +42,21 @@ ballDraw :: Point -> Picture
 ballDraw (x, y) = Translate x y (Circle 10)
 
 displayTime :: World -> Picture
-displayTime w = translate (0) (370) . scale 0.2 0.2 $ disp where
+displayTime w = translate (0) (370) . scale 0.2 0.2 . text . timeAsText $ w
+
+timeAsText :: World -> String
+timeAsText w = timeText where
   t = time w
   minutes = floor (t/60)
   seconds = floor (t - 60 * (fromIntegral (floor (t/60))))
   rest =  floor . (100 * ) . snd . properFraction $ t
-  disp = text ((show minutes) ++ ":" ++ (show seconds) ++ ":" ++ (show rest))
+  timeText = (show minutes) ++ ":" ++ (show seconds) ++ ":" ++ (show rest)
+
+scoreAsText :: World -> String
+scoreAsText world = score where
+  s1 = show (p1Score world)
+  s2 = show (p2Score world)
+  score = s1 ++ ":" ++ s2
 
 victory :: World -> Picture
 victory world = pictures [translate (-350) 0 . text $ "You win!", translate 0 (-420) . displayTime $ world, translate (-200) (-50) . scale 0.2 0.2 . text $ "your time:"]
@@ -54,11 +67,8 @@ defeat world = pictures [translate (-350) 0 . text $ "You lose!", translate 0 (-
 
 worldDraw :: World -> Picture
 worldDraw world = case (result world) of
-  Ongoing -> pictures [(rotate (-90) $ translate (-400) (-400) $ pictures [playerDraw 1 $ p1 g, playerDraw 2 $ p2 g, ballDraw $ ball g]), translate (-400) (-400) $ text score, displayTime world] where
+  Ongoing -> pictures [(rotate (-90) $ translate (-400) (-400) $ pictures [playerDraw 1 $ p1 g, playerDraw 2 $ p2 g, ballDraw $ ball g]), translate (-400) (-400) . text . scoreAsText $ world, displayTime world] where
     g = game world
-    s1 = show (p1Score world)
-    s2 = show (p2Score world)
-    score = s1 ++ ":" ++ s2
   Player -> victory world
   otherwise -> defeat world
 
@@ -120,8 +130,20 @@ eventHandler (EventMotion (x,y)) world = world {game = g1} where
   g = (game world)
   g1 = g {p1 = max 50 . min 750 $ (y+400)}
 eventHandler (EventKey (Char 'r') Up _ _) world = startWorld {game = (game world) {p1 = p1 $ game world}}
-eventHandler (EventKey (Char 'q') Up _ _) world = startWorld {game = (game world) {p1 = p1 $ game world}}
+eventHandler (EventKey (Char 's') Down _ _) world = unsafeResultSave world
 eventHandler _ world = world
+
+unsafeResultSave :: World -> World
+unsafeResultSave world = case (result world) of
+  Player -> unsafePerformIO $ do
+    currDir <- getCurrentDirectory
+    let file = currDir ++ "/records"
+    appendFile file (timeAsText world ++ " " ++ (scoreAsText world))
+    return world
+  otherwise -> w
+
+
+type WorldIO = StateT World IO
 
 main :: IO ()
 main = play

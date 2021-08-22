@@ -1,5 +1,5 @@
 name:                helloworld
-version:             0.9.3.0
+version:             0.9.5.0
 github:              "heightweight/pong"
 license:             BSD3
 author:              "Boiko Volodymyr"
@@ -22,6 +22,9 @@ description:         Please see the README on GitHub at <https://github.com/gith
 dependencies:
 - base >= 4.7 && < 5
 - gloss
+- mtl
+- transformers
+- directory
 
 library:
   source-dirs: src
