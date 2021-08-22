@@ -2,14 +2,16 @@ module Main where
 
 import Lib
 import Graphics.Gloss
-import Graphics.Gloss.Interface.Pure.Game
+import Graphics.Gloss.Interface.IO.Game
 import Text.Printf (printf)
 import System.IO.Unsafe (unsafePerformIO)
 import Control.Monad.Trans
 import Control.Monad.Trans.State
 import System.Directory
+import Data.List.Split
+import Data.List
 
-data Result = Ongoing | Player | AI
+data Result = Ongoing | Player | AI | Idle
 
 data World = World {
 game :: Game,
@@ -29,7 +31,7 @@ vel :: Float
 -- (800, 800)
 
 startWorld :: World
-startWorld = (World (Game 400 400 (400, 400) 0.72 300) 0 0 Ongoing 0)
+startWorld = (World (Game 400 400 (400, 400) 0.72 300) 0 0 Idle 0)
 
 simulationRate :: Int
 simulationRate = 60
@@ -61,16 +63,51 @@ scoreAsText world = score where
 victory :: World -> Picture
 victory world = pictures [translate (-350) 0 . text $ "You win!", translate 0 (-420) . displayTime $ world, translate (-200) (-50) . scale 0.2 0.2 . text $ "your time:"]
 
-
 defeat :: World -> Picture
 defeat world = pictures [translate (-350) 0 . text $ "You lose!", translate 0 (-420) . displayTime $ world, translate (-200) (-50) . scale 0.2 0.2 . text $ "your time:"]
 
-worldDraw :: World -> Picture
+type Record = String
+
+recordUncurry :: Record -> (Float, Int)
+recordUncurry r = (time, score) where
+  records = splitOn " " r
+  undone = map (splitOn ":") records
+  time :: Float
+  score :: Int
+  time = 60*(read ((head undone) !! 0)) + read ((head undone) !! 1) + (read ((head undone) !! 2))/100
+  score = read . last . last $ undone
+
+leaderboardSort :: [Record] -> [Record]
+leaderboardSort = sortOn (fst . recordUncurry)
+
+leaderboard :: IO Picture
+leaderboard = do
+  currDir <- getCurrentDirectory
+  let file = currDir ++ "/records"
+  content <- readFile file
+  let records = lines content
+  let top10 = take 10 . nub . leaderboardSort $ records
+  return $ pictures (zipWith ($) (map (\n -> translate 0 (n*50)) [1..10]) (map text top10))
+
+idle :: IO Picture
+idle = undefined
+
+
+worldDraw :: World -> IO Picture
 worldDraw world = case (result world) of
-  Ongoing -> pictures [(rotate (-90) $ translate (-400) (-400) $ pictures [playerDraw 1 $ p1 g, playerDraw 2 $ p2 g, ballDraw $ ball g]), translate (-400) (-400) . text . scoreAsText $ world, displayTime world] where
-    g = game world
-  Player -> victory world
-  otherwise -> defeat world
+  Ongoing -> do
+    let g = game world
+    return $ pictures [(rotate (-90) $ translate (-400) (-400) $ pictures [playerDraw 1 $ p1 g, playerDraw 2 $ p2 g, ballDraw $ ball g]), translate (-400) (-400) . text . scoreAsText $ world, displayTime world]
+  Player -> do
+    leaders <- leaderboard
+    return $ pictures [victory world, translate (-200) (-100) . scale 0.2 0.2 $ leaders]
+  otherwise -> do
+    leaders <- leaderboard
+    return $ pictures [defeat world, translate (-200) (-100) . scale 0.2 0.2 $ leaders]
+--  Ongoing -> pictures [(rotate (-90) $ translate (-400) (-400) $ pictures [playerDraw 1 $ p1 g, playerDraw 2 $ p2 g, ballDraw $ ball g]), translate (-400) (-400) . text . scoreAsText $ world, displayTime world] where
+--    g = game world
+--  Player -> victory world
+--  otherwise -> defeat world
 
 paddleAngle :: Float -> Float -> Float
 paddleAngle paddle ball = (pi/8)*(1 + (ball - paddle)/50)/2 + 7*(pi/8)*(1 -(1 + (ball - paddle)/50)/2)
@@ -121,33 +158,33 @@ gameOver w
   |(p2Score w) == 7 = w {result = AI}
   |otherwise = w
 
-updateWorld :: Float -> World -> World
-updateWorld seconds world@(World _ _ _ Ongoing _ ) = gameOver . scoreCheck . aiMove $ moveBall seconds world
-updateWorld _ world = world
+updateWorld :: Float -> World -> IO World
+updateWorld seconds world@(World _ _ _ Ongoing _ ) = do
+  return $ gameOver . scoreCheck . aiMove $ moveBall seconds world
+updateWorld _ world = do
+  return world
 
-eventHandler :: Event -> World -> World
-eventHandler (EventMotion (x,y)) world = world {game = g1} where
-  g = (game world)
-  g1 = g {p1 = max 50 . min 750 $ (y+400)}
-eventHandler (EventKey (Char 'r') Up _ _) world = startWorld {game = (game world) {p1 = p1 $ game world}}
-eventHandler (EventKey (Char 's') Down _ _) world = unsafeResultSave world
-eventHandler _ world = world
-
-unsafeResultSave :: World -> World
-unsafeResultSave world = case (result world) of
-  Player -> unsafePerformIO $ do
+eventHandler :: Event -> World -> IO World
+eventHandler (EventMotion (x,y)) world =  do
+  let g = game world
+  let g1 = g {p1 = max 50 . min 750 $ (y+400)}
+  return $ world {game = g1}
+eventHandler (EventKey (Char 'r') Up _ _) world = do
+  return $ startWorld {game = (game world) {p1 = p1 $ game world}}
+eventHandler (EventKey (Char 's') Down _ _) world = case (result world) of
+  Player -> do
     currDir <- getCurrentDirectory
     let file = currDir ++ "/records"
-    appendFile file (timeAsText world ++ " " ++ (scoreAsText world))
+    appendFile file (timeAsText world ++ " " ++ (scoreAsText world) ++ "\n")
     return world
-  otherwise -> w
-
-
-type WorldIO = StateT World IO
+  otherwise -> do
+    return world
+eventHandler _ world = do
+  return world
 
 main :: IO ()
-main = play
-  (InWindow "pong" (800, 800) (300, 300))
+main = playIO
+  (InWindow "pong!" (800, 800) (0, 0))
   white
   simulationRate
   startWorld
