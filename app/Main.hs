@@ -89,9 +89,19 @@ leaderboard = do
   let top10 = take 10 . nub . leaderboardSort $ records
   return $ pictures (zipWith ($) (map (\n -> translate 0 (n*50)) [1..10]) (map text top10))
 
-idle :: IO Picture
-idle = undefined
+idle :: Color -> IO Picture
+idle c = do
+  let s = line $ [(0, 0), (-100, 0), (-100, -100), (0, -100), (0, -200), (-100, -200)]
+  let t = pictures [line [(-100, 0), (0, 0)], line [(-50, 0), (-50, -200)]]
+  let a = pictures [line [(-100, -200), (-100, 0), (0, 0), (0, -200)], line [(-100, -100), (0, -100)]]
+  let r = pictures [line [(-100, -200), (-100, 0), (0, 0), (0, -100), (-100, -100)], line [(-33, -100), (-33, -200)]]
+  let start = color c . translate (-160) (100) . pictures $ zipWith ($) (map (flip translate 0) [0, 110, 220, 350, 470]) [s, t, a, r, t]
+  let width = 150
+  let stripe = polygon [(-400 + width, -400), (-400, -400), (-400, -400 + width), (400 - width, 400), (400, 400), (400, 400 - width)]
+  return $ pictures [rotate 45 . layer 20 $ start, stripe]
 
+layer :: Float -> Picture -> Picture
+layer n = pictures . zipWith ($) (map (\k -> translate k k)  [(-n)..n]) . replicate (floor n)
 
 worldDraw :: World -> IO Picture
 worldDraw world = case (result world) of
@@ -101,9 +111,10 @@ worldDraw world = case (result world) of
   Player -> do
     leaders <- leaderboard
     return $ pictures [victory world, translate (-200) (-100) . scale 0.2 0.2 $ leaders]
-  otherwise -> do
+  AI -> do
     leaders <- leaderboard
     return $ pictures [defeat world, translate (-200) (-100) . scale 0.2 0.2 $ leaders]
+  Idle -> idle (makeColor 0 0 0 (snd . properFraction $ (time world)))
 --  Ongoing -> pictures [(rotate (-90) $ translate (-400) (-400) $ pictures [playerDraw 1 $ p1 g, playerDraw 2 $ p2 g, ballDraw $ ball g]), translate (-400) (-400) . text . scoreAsText $ world, displayTime world] where
 --    g = game world
 --  Player -> victory world
@@ -161,8 +172,8 @@ gameOver w
 updateWorld :: Float -> World -> IO World
 updateWorld seconds world@(World _ _ _ Ongoing _ ) = do
   return $ gameOver . scoreCheck . aiMove $ moveBall seconds world
-updateWorld _ world = do
-  return world
+updateWorld seconds world = do
+  return $ world {time = time world + seconds}
 
 eventHandler :: Event -> World -> IO World
 eventHandler (EventMotion (x,y)) world =  do
@@ -170,7 +181,9 @@ eventHandler (EventMotion (x,y)) world =  do
   let g1 = g {p1 = max 50 . min 750 $ (y+400)}
   return $ world {game = g1}
 eventHandler (EventKey (Char 'r') Up _ _) world = do
-  return $ startWorld {game = (game world) {p1 = p1 $ game world}}
+  return $ startWorld {game = (game world) {p1 = p1 $ game world, vel = 300}, result = Ongoing, time = 0}
+eventHandler (EventKey (Char 'p') Down _ _) world = do
+  return $ world {result = Idle}
 eventHandler (EventKey (Char 's') Down _ _) world = case (result world) of
   Player -> do
     currDir <- getCurrentDirectory
