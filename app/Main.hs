@@ -2,7 +2,7 @@ module Main where
 
 import Lib
 import Graphics.Gloss
-import Graphics.Gloss.Interface.Pure.Game
+import Graphics.Gloss.Interface.IO.Game
 import Text.Printf (printf)
 import System.IO.Unsafe (unsafePerformIO)
 import Control.Monad.Trans
@@ -63,6 +63,26 @@ victory world = pictures [translate (-350) 0 . text $ "You win!", translate 0 (-
 
 defeat :: World -> Picture
 defeat world = pictures [translate (-350) 0 . text $ "You lose!", translate 0 (-420) . displayTime $ world, translate (-200) (-50) . scale 0.2 0.2 . text $ "your time:"]
+
+type Record = String
+
+recordUncurry :: Record -> (String, String)
+recordUncurry r = unveil ("", r) where
+  unveil (t, "") = (t, "")
+  unveil (t, ' ':ss) = (t, ss)
+  unveil (t, s:ss) = unveil (t ++ [s], ss)
+
+leaderboardSort :: [Record] -> [Record]
+leaderboardSort records = undefined
+
+leaderboard :: IO Picture
+leaderboard = do
+  currDir <- getCurrentDirectory
+  let file = currDir ++ "/records"
+  content <- readFile file
+  let records = lines content
+  return $ text "oof"
+
 
 worldDraw :: World -> IO Picture
 worldDraw world = case (result world) of
@@ -144,12 +164,19 @@ eventHandler (EventKey (Char 's') Down _ _) world = case (result world) of
   Player -> do
     currDir <- getCurrentDirectory
     let file = currDir ++ "/records"
-    appendFile file (timeAsText world ++ " " ++ (scoreAsText world))
+    appendFile file (timeAsText world ++ " " ++ (scoreAsText world) ++ "\n")
     return world
   otherwise -> do
     return world
 eventHandler _ world = do
   return world
 
-
-main = undefined
+main :: IO ()
+main = playIO
+  (InWindow "pong" (800, 800) (300, 300))
+  white
+  simulationRate
+  startWorld
+  worldDraw
+  eventHandler
+  updateWorld
