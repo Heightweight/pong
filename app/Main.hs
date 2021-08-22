@@ -4,6 +4,13 @@ import Lib
 import Graphics.Gloss
 import Graphics.Gloss.Interface.Pure.Game
 
+
+data World = World {
+game :: Game,
+p1Score :: Int,
+p2Score :: Int
+}
+
 data Game = Game {
 p1 :: Float,
 p2 :: Float,
@@ -21,8 +28,12 @@ playerDraw _ x = Polygon [(x-50, 20), (x+50, 20), (x+50, 0), (x-50, 0)]
 ballDraw :: Point -> Picture
 ballDraw (x, y) = Translate x y (Circle 10)
 
-gameDraw :: Game -> Picture
-gameDraw g = translate (-400) (-400) $ pictures [playerDraw 1 $ p1 g, playerDraw 2 $ p2 g, ballDraw $ ball g, text (show (dir g))]
+worldDraw :: World -> Picture
+worldDraw world = pictures [(rotate (-90) $ translate (-400) (-400) $ pictures [playerDraw 1 $ p1 g, playerDraw 2 $ p2 g, ballDraw $ ball g]), translate (-400) (-400) $ text score] where
+  g = game world
+  s1 = show (p1Score world)
+  s2 = show (p2Score world)
+  score = s1 ++ ":" ++ s2
 
 paddleAngle :: Float -> Float -> Float
 paddleAngle paddle ball = (pi/8)*(1 + (ball - paddle)/50)/2 + 7*(pi/8)*(1 -(1 + (ball - paddle)/50)/2)
@@ -30,11 +41,12 @@ paddleAngle paddle ball = (pi/8)*(1 + (ball - paddle)/50)/2 + 7*(pi/8)*(1 -(1 + 
 normalize :: Float -> Float
 normalize f = max 11 . min 789 $ f
 
-moveBall :: Game -> Float -> Game
-moveBall g f = g {dir = dirn, ball = (xt, yt)}
+moveBall :: Float -> World -> World
+moveBall f w = w {game = (game w) {dir = dirn, ball = (xt, yt)}}
  where
-  xn = fst (ball g) + vel g * cos (dir g)
-  yn = snd (ball g) + vel g * sin (dir g)
+  g = game w
+  xn = fst (ball g) + f * vel g * cos (dir g)
+  yn = snd (ball g) + f * vel g * sin (dir g)
   dirx
     |(max 10 $ min 790 xn) == xn = 1
     |otherwise = -1
@@ -44,15 +56,18 @@ moveBall g f = g {dir = dirn, ball = (xt, yt)}
   dirn
     |dirx == -1 = pi - diry * dir g
     |(diry == -1) && (dirx == 1) = diry * dir g
-    |max (p1 g - 50) (min (p1 g + 50) xn) == xn && (yn <= 30) = paddleAngle (p1 g) xn
-    |max (p2 g - 50) (min (p2 g + 50) xn) == xn && (yn >= 770) = - paddleAngle (p2 g) xn
+    |max (p1 g - 50) (min (p1 g + 50) xn) == xn && (yn >= 770) = - paddleAngle (p1 g) xn
+    |max (p2 g - 50) (min (p2 g + 50) xn) == xn && (yn <= 30) = paddleAngle (p2 g) xn
     |otherwise = (dir g)
-  xt = (vel g * cos dirn) + normalize (fst (ball g))
-  yt = (vel g * sin dirn) + normalize (snd (ball g))
+  xt = (f * vel g * cos dirn) + normalize (fst (ball g))
+  yt = (f * vel g * sin dirn) + normalize (snd (ball g))
 
-movePaddle :: Event -> Game -> Game
-movePaddle (EventMotion (x,y)) g = g {nextPos = max 50 . min 750 $ (x+400)}
-movePaddle _ g = g
+eventHandler :: Event -> World -> World
+eventHandler (EventMotion (x,y)) world = world {game = g1} where
+  g = (game world)
+  g1 = g {p1 = max 50 . min 750 $ (y+400)}
+eventHandler (EventKey (Char 'r') Up _ _) world = (World (Game (p1 $ game world) 400 (400, 400) 0.72 300 400) 0 0)
+eventHandler _ world = world
 
 updatePaddle :: Game -> Game
 updatePaddle g = g {p1 = nextPos g}
@@ -72,7 +87,7 @@ main = play
   (InWindow "pong" (800, 800) (300, 300))
   white
   60
-  (Game 400 400 (400, 400) 0.72 5 400)
-  gameDraw
-  movePaddle
-  updatePaddle . (flip moveBall)
+  (World (Game 400 400 (400, 400) 0.72 300 400) 0 0)
+  worldDraw
+  eventHandler
+  moveBall
