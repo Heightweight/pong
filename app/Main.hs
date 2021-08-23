@@ -18,7 +18,8 @@ game :: Game,
 p1Score :: Int,
 p2Score :: Int,
 result :: Result,
-time :: Float
+time :: Float,
+idleTime :: Float
 }
 
 data Game = Game {
@@ -31,7 +32,7 @@ vel :: Float
 -- (800, 800)
 
 startWorld :: World
-startWorld = (World (Game 400 400 (400, 400) 0.72 300) 0 0 Idle 0)
+startWorld = (World (Game 400 400 (400, 400) 0.72 300) 0 0 Idle 0 0)
 
 simulationRate :: Int
 simulationRate = 60
@@ -87,7 +88,7 @@ leaderboard = do
   content <- readFile file
   let records = lines content
   let top10 = take 10 . nub . leaderboardSort $ records
-  return $ pictures (zipWith ($) (map (\n -> translate 0 (n*50)) [1..10]) (map text top10))
+  return $ pictures (zipWith ($) (map (\n -> translate 0 (n*(-100))) [1..10]) (map text top10))
 
 idle :: Color -> IO Picture
 idle c = do
@@ -98,7 +99,7 @@ idle c = do
   let start = color c . translate (-160) (100) . pictures $ zipWith ($) (map (flip translate 0) [0, 110, 220, 350, 470]) [s, t, a, r, t]
   let width = 150
   let stripe = polygon [(-400 + width, -400), (-400, -400), (-400, -400 + width), (400 - width, 400), (400, 400), (400, 400 - width)]
-  return $ pictures [stripe, translate 0 30 . rotate (-45) . layer 20 . scale 0.8 0.8 $ start]
+  return $ pictures [stripe,  rotate (-45) . layer 20 . scale 0.8 0.8 $ start]
 
 layer :: Float -> Picture -> Picture
 layer n = pictures . zipWith ($) (map (\k -> translate k k)  [(-n)..n]) . replicate (floor n)
@@ -114,7 +115,7 @@ worldDraw world = case (result world) of
   AI -> do
     leaders <- leaderboard
     return $ pictures [defeat world, translate (-200) (-100) . scale 0.2 0.2 $ leaders]
-  Idle -> idle . greyN . snd . properFraction . time $ world
+  Idle -> idle . greyN . snd . properFraction . idleTime $ world
 --  Ongoing -> pictures [(rotate (-90) $ translate (-400) (-400) $ pictures [playerDraw 1 $ p1 g, playerDraw 2 $ p2 g, ballDraw $ ball g]), translate (-400) (-400) . text . scoreAsText $ world, displayTime world] where
 --    g = game world
 --  Player -> victory world
@@ -170,10 +171,10 @@ gameOver w
   |otherwise = w
 
 updateWorld :: Float -> World -> IO World
-updateWorld seconds world@(World _ _ _ Ongoing _ ) = do
+updateWorld seconds world@(World _ _ _ Ongoing _ _) = do
   return $ gameOver . scoreCheck . aiMove $ moveBall seconds world
 updateWorld seconds world = do
-  return $ world {time = (time world) + seconds}
+  return $ world {idleTime = (idleTime world) + seconds}
 
 eventHandler :: Event -> World -> IO World
 eventHandler (EventMotion (x,y)) world =  do
