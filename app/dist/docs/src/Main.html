@@ -1,0 +1,47 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span class="hs-keyword">module</span><span> </span><span class="hs-identifier">Main</span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-2"></span><span>
+</span><span id="line-3"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="App.Engine.html"><span class="hs-identifier">App.Engine</span></a></span><span>
+</span><span id="line-4"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="App.Logic.html"><span class="hs-identifier">App.Logic</span></a></span><span>
+</span><span id="line-5"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="App.Draw.Render.html"><span class="hs-identifier">App.Draw.Render</span></a></span><span>
+</span><span id="line-6"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Graphics.Gloss.Interface.IO.Game</span></span><span>
+</span><span id="line-7"></span><span>
+</span><span id="line-8"></span><span class="annot"><a href="Main.html#main"><span class="hs-identifier hs-type">main</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">IO</span></span><span> </span><span class="hs-special">(</span><span class="hs-special">)</span><span>
+</span><span id="line-9"></span><span id="main"><span class="annot"><span class="annottext">main :: IO ()
+</span><a href="Main.html#main"><span class="hs-identifier hs-var hs-var">main</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Display
+-&gt; Color
+-&gt; Int
+-&gt; World
+-&gt; (World -&gt; IO Picture)
+-&gt; (Event -&gt; World -&gt; IO World)
+-&gt; (Float -&gt; World -&gt; IO World)
+-&gt; IO ()
+forall world.
+Display
+-&gt; Color
+-&gt; Int
+-&gt; world
+-&gt; (world -&gt; IO Picture)
+-&gt; (Event -&gt; world -&gt; IO world)
+-&gt; (Float -&gt; world -&gt; IO world)
+-&gt; IO ()
+</span><span class="hs-identifier hs-var">playIO</span></span><span>
+</span><span id="line-10"></span><span>  </span><span class="hs-special">(</span><span class="annot"><span class="annottext">String -&gt; (Int, Int) -&gt; (Int, Int) -&gt; Display
+</span><span class="hs-identifier hs-var">InWindow</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;pong!&quot;</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">800</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">800</span></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">0</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">0</span></span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-11"></span><span>  </span><span class="annot"><span class="annottext">Color
+</span><span class="hs-identifier hs-var">black</span></span><span>
+</span><span id="line-12"></span><span>  </span><span class="annot"><span class="annottext">Int
+</span><a href="App.Engine.html#simulationRate"><span class="hs-identifier hs-var">simulationRate</span></a></span><span>
+</span><span id="line-13"></span><span>  </span><span class="annot"><span class="annottext">World
+</span><a href="App.Logic.html#startWorld"><span class="hs-identifier hs-var">startWorld</span></a></span><span>
+</span><span id="line-14"></span><span>  </span><span class="annot"><span class="annottext">World -&gt; IO Picture
+</span><a href="App.Draw.Render.html#worldDraw"><span class="hs-identifier hs-var">worldDraw</span></a></span><span>
+</span><span id="line-15"></span><span>  </span><span class="annot"><span class="annottext">Event -&gt; World -&gt; IO World
+</span><a href="App.Logic.html#eventHandler"><span class="hs-identifier hs-var">eventHandler</span></a></span><span>
+</span><span id="line-16"></span><span>  </span><span class="annot"><span class="annottext">Float -&gt; World -&gt; IO World
+</span><a href="App.Logic.html#updateWorld"><span class="hs-identifier hs-var">updateWorld</span></a></span><span>
+</span><span id="line-17"></span></pre></body></html>

@@ -9,7 +9,11 @@ module App.Draw.Render where
   import Data.List.Split (splitOn)
   import Data.Tuple (swap)
 
-  playerDraw :: Int -> Float -> Float -> Picture
+  -- | Draws a paddle for a specified player according to its position.
+  playerDraw :: Int -- ^ the number of the paddle. (1 for the player paddle, anything else for the AI paddle)
+    -> Float -- ^ the x-coordinate of the center of the paddle
+    -> Float -- ^ a number used to generate the inner color of the paddle
+    -> Picture -- ^ the resulting picture
   playerDraw 1 x t = pictures [polygon [(x-50, 780), (x+50, 780), (x+50, 800), (x-50, 800)], color newColor $ polygon [(x-45, 785), (x+45, 785), (x+45, 795), (x-45, 795)]] where
     scale = snd (properFraction t)
     newColor = bright $ mixColors scale (1-scale) blue green
@@ -17,25 +21,40 @@ module App.Draw.Render where
     scale = snd (properFraction t)
     newColor = bright $ mixColors scale (1-scale) blue green
 
-  ballDraw :: Point -> Float -> Picture
+  -- | Draws the ball according to its position.
+  ballDraw :: Point -- ^ the (x,y)-coordinates of the ball
+    -> Float -- ^ a number used to generate the inner color of the ball
+    -> Picture -- ^ the resulting picture
   ballDraw (x, y) t = translate x y $ pictures [(circleSolid 10), (color newColor $ circleSolid 5)] where
     scale = snd (properFraction t)
     newColor = bright $ mixColors scale (1-scale) blue green
 
-  displayTime :: Float -> World -> Picture
+  -- | Draws the game time of a world.
+  displayTime :: Float -- ^ a number used to generate the color of the text
+    -> World -- ^ the current world
+    -> Picture -- ^ the resulting picture
   displayTime t w = color newColor . translate (0) (370) . scale 0.2 0.2 . text . timeAsText $ w where
     newColor = greyN $ (1 - 2 * abs (0.5 - 2 * snd (properFraction t)))
 
-  victory :: Float -> World -> Picture
+  -- | Draws a victory screen for a given world.
+  -- Displays the total time of the game.
+  victory :: Float -- ^ a number used to generate the color of the text
+    -> World -- ^ the current world
+    -> Picture -- ^ the resulting picture
   victory t world = pictures [translate (-350) 0 . text $ "You win!", translate 0 (-420) . displayTime t $ world, translate (-200) (-50) . scale 0.2 0.2 . text $ "your time:"]
 
-  defeat :: Float -> World -> Picture
+  -- | Draws a defeat screen for a given world.
+  -- Displayes the total time of the game.
+  defeat :: Float -- ^ a number used to generate the color of the text
+    -> World -- ^ the current world
+    -> Picture -- ^ the resulting picture
   defeat t world = pictures [translate (-350) 0 . text $ "You lose!", translate 0 (-420) . displayTime t $ world, translate (-200) (-50) . scale 0.2 0.2 . text $ "your time:"]
 
-
+  -- | Sorts a list of game records.
   leaderboardSort :: [Record] -> [Record]
   leaderboardSort = sortOn (swap . recordUncurry)
 
+  -- | The top-10 scores of all time as a picture wrapped in IO context.
   leaderboard :: IO Picture
   leaderboard = do
     currDir <- getCurrentDirectory
@@ -45,24 +64,27 @@ module App.Draw.Render where
     let top10 = take 10 . nub . leaderboardSort $ records
     return $ pictures (zipWith ($) (map (\n -> translate 0 (n*(-110))) [1..10]) (map text top10))
 
-  idle :: Color -> IO Picture
+  -- | Generates an idle-screen wrapped in IO context with a given color.
+  idle :: Color -- ^ the color of the title text
+    -> IO Picture -- ^ the resulting picture to be used in an IO context.
   idle c = do
     let pongPicture = color c . translate (-160) (100) . pictures $ zipWith (flip translate 0) (map (150*) [0..4]) [aP, aO, aN, aG, aEx]
     let width = 150
     let stripe = polygon [(-400 + width, -400), (-400, -400), (-400, -400 + width), (400 - width, 400), (400, 400), (400, 400 - width)]
     return $ pictures [stripe,  rotate (-45) . scale 0.8 0.8 $ pongPicture]
 
-  pause :: Color -> IO Picture
+  -- | Generates a pause-screen wrapped in IO context with a given color.
+  pause :: Color -- ^ the color of the title text
+    -> IO Picture -- ^ the resulting picture to be used in an IO context.
   pause c = do
     let pausePicture = color c . translate (-160) (100) . pictures $ zipWith (flip translate 0) (map (150*) [0..4]) [aP, aA, aU, aS, aE]
     let width = 150
     let stripe = polygon [(-400 + width, -400), (-400, -400), (-400, -400 + width), (400 - width, 400), (400, 400), (400, 400 - width)]
     return $ pictures [stripe,  rotate (-45) . scale 0.8 0.8 $ pausePicture]
 
-  layer :: Float -> Picture -> Picture
-  layer n = pictures . zipWith ($) (map (\k -> translate k k)  [(-n)..n]) . replicate (floor n)
-
-  worldDraw :: World -> IO Picture
+  -- | A picture of a world wrapped in IO context.
+  worldDraw :: World -- ^ the current world
+    -> IO Picture -- ^ the resulting picture to be used in an IO context.
   worldDraw world = case (result world) of
     Ongoing -> do
       let g = game world
