@@ -3,10 +3,7 @@ module Main where
 import Lib
 import Graphics.Gloss
 import Graphics.Gloss.Interface.IO.Game
-import Text.Printf (printf)
-import System.IO.Unsafe (unsafePerformIO)
 import Control.Monad.Trans
-import Control.Monad.Trans.State
 import System.Directory
 import Data.List.Split
 import Data.List
@@ -90,16 +87,25 @@ leaderboard = do
   let top10 = take 10 . nub . leaderboardSort $ records
   return $ pictures (zipWith ($) (map (\n -> translate 0 (n*(-100))) [1..10]) (map text top10))
 
+hBrick :: (Float, Float) -> Picture
+hBrick (x, y) = polygon [(x-10, y+10), (x-10, y-10), (x + 110, y-10), (x+110, y+10)]
+
+vBrick :: (Float, Float) -> Picture
+vBrick (x, y) = polygon [(x-10, y+10), (x+10, y+10), (x+10, y-110), (x-10, y-110)]
+
+dBrick :: (Float, Float) -> Picture
+dBrick (x, y) = polygon [(x, y+10), (x, y-10), (x+90, y-100), (x+110, y-100)]
+
 idle :: Color -> IO Picture
 idle c = do
-  let s = line $ [(0, 0), (-100, 0), (-100, -100), (0, -100), (0, -200), (-100, -200)]
-  let t = pictures [line [(-100, 0), (0, 0)], line [(-50, 0), (-50, -200)]]
-  let a = pictures [line [(-100, -200), (-100, 0), (0, 0), (0, -200)], line [(-100, -100), (0, -100)]]
-  let r = pictures [line [(-100, -200), (-100, 0), (0, 0), (0, -100), (-100, -100)], line [(-33, -100), (-33, -200)]]
-  let start = color c . translate (-160) (100) . pictures $ zipWith ($) (map (flip translate 0) [0, 110, 220, 350, 470]) [s, t, a, r, t]
+  let s = pictures [hBrick (-100, 0), hBrick (-100, -100), hBrick (-100, -200), vBrick (-100, 0), vBrick (0, -100)]
+  let t = pictures [hBrick (-100, 0), vBrick (-50, 0), vBrick (-50, -100)]
+  let a = pictures [hBrick (-100, 0), hBrick (-100, -100), vBrick (-100, 0), vBrick (-100, -100), vBrick (0, 0), vBrick (0, -100)]
+  let r = pictures [hBrick (-100, 0), hBrick (-100, -100), vBrick (-100, 0), vBrick (0, 0), vBrick (-100, -100), dBrick (-100, -100)]
+  let start = color c . translate (-160) (100) . pictures $ zipWith (flip translate 0) (map (140*) [0..4]) [s, t, a, r, t]
   let width = 150
   let stripe = polygon [(-400 + width, -400), (-400, -400), (-400, -400 + width), (400 - width, 400), (400, 400), (400, 400 - width)]
-  return $ pictures [stripe,  rotate (-45) . layer 20 . scale 0.8 0.8 $ start]
+  return $ pictures [stripe,  rotate (-45) . scale 0.8 0.8 $ start]
 
 layer :: Float -> Picture -> Picture
 layer n = pictures . zipWith ($) (map (\k -> translate k k)  [(-n)..n]) . replicate (floor n)
