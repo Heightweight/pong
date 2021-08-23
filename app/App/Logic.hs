@@ -2,35 +2,63 @@ module App.Logic where
 
   import Graphics.Gloss.Interface.IO.Game
   import Graphics.Gloss.Data.Point (Point)
-  import Data.List.Split
-  import System.Directory
+  import Data.List.Split (splitOn)
+  import System.Directory (getCurrentDirectory)
   import Control.Monad (guard)
 
-  data World = World {
-  game :: Game,
-  p1Score :: Int,
-  p2Score :: Int,
-  result :: Result,
-  time :: Float,
-  idleTime :: Float
-  }
-
+  -- | A game value. It holds all necessary data to calculate the next game state depending on time.
   data Game = Game {
+  -- | x-coordinate of the player-controlled paddle
   p1 :: Float,
+  -- | x-coordinate of the computer-controlled paddle
   p2 :: Float,
+  -- | the coordinates of the ball
   ball :: Point,
+  -- | the direction in which the ball is moving in radians
   dir :: Float,
+  -- | the velocity of the ball
   vel :: Float
   }
 
-  data Result = Ongoing | Player | AI | Idle | Paused deriving (Eq)
+  -- | Describes the result and/or state of the current world.
+  data Result
+    -- | for games in progress
+    = Ongoing
+    -- | for finished games won by the player
+    | Player
+    -- | for finished games won by the AI
+    | AI
+    -- | for games that have not been started yet
+    | Idle
+    -- | for paused games
+    | Paused deriving (Eq)
 
+  -- | Describes the world of the game. Holds the game data and the score, time and result of the game.
+  data World = World {
+  -- | the current game state
+  game :: Game,
+  -- | player's score
+  p1Score :: Int,
+  -- | AI's score
+  p2Score :: Int,
+  -- | the result/state of the current game
+  result :: Result,
+  -- | the playtime (only includes active playing)
+  time :: Float,
+  -- | the time of inactivity (only when the game is not being played)
+  idleTime :: Float
+  }
+  -- | Used for storing the time and result of a finished game.
   type Record = String
 
+  -- | The default world of the game. By default the game has not been started yet, the paddles and the ball are centered,
+  -- and the ball direction is 0.72 (in radians)
   startWorld :: World
   startWorld = (World (Game 400 400 (400, 400) 0.72 300) 0 0 Idle 0 0)
 
-  recordUncurry :: Record -> (Float, Int)
+  -- | Returns a pair of time in seconds and the player's score of a given record
+  recordUncurry :: Record -- ^ the record string (minutes:seconds:miliseconds player:ai)
+    -> (Float, Int) -- ^ the resulting time-player pair
   recordUncurry r = (time, score) where
     records = splitOn " " r
     undone = map (splitOn ":") records
@@ -39,13 +67,21 @@ module App.Logic where
     time = 60*(read ((head undone) !! 0)) + read ((head undone) !! 1) + (read ((head undone) !! 2))/100
     score = read . last . last $ undone
 
-  paddleAngle :: Float -> Float -> Float
+  -- | Returns the bounce angle of a ball hitting a paddle.
+  paddleAngle :: Float -- ^ the x-coordinate of the paddle
+    -> Float -- ^ the x-coordinate of the ball
+    -> Float -- ^ the resulting angle in radians
   paddleAngle paddle ball = (pi/8)*(1 + (ball - paddle)/50)/2 + 7*(pi/8)*(1 -(1 + (ball - paddle)/50)/2)
 
-  normalize :: Float -> Float
+  -- | Returns a normalized coordinate for collision-avoidance purposes.
+  normalize :: Float -- ^ the coordinate to be normalized
+    -> Float -- ^ the resulting coordinate
   normalize f = max 11 . min 789 $ f
 
-  moveBall :: Float -> World -> World
+  -- | Moves the ball in a set direction for a given time accounting for collisions.
+  moveBall :: Float -- ^ time passed in seconds
+    -> World -- ^ the world to update
+    -> World -- ^ the resulting world
   moveBall f w = w {game = (game w) {dir = dirn, ball = (xt, yt)}, time = (time w) + f}
    where
     g = game w
@@ -66,13 +102,19 @@ module App.Logic where
     xt = (f * vel g * cos dirn) + normalize (fst (ball g))
     yt = (f * vel g * sin dirn) + normalize (snd (ball g))
 
-  scoreCheck :: World -> World
+  -- | Changes the score and the game state if any player scores.
+  -- Also changes the speed of the ball for each point scored by the player.
+  scoreCheck :: World -- ^ the current world
+    -> World -- ^ the world with updated score/field in case someone scored
   scoreCheck world
     |(snd . ball . game $ world) <=15 = world {game = (Game (p1 . game $ world) 400 (400, 400) 0.72 ((vel . game $ world) + 30)), p1Score = (p1Score world)+1}
     |(snd . ball . game $ world) >=785 = world {game = (Game (p1 . game $ world) 400 (400, 400) 0.72 (vel . game $ world)), p2Score = (p2Score world)+1}
     |otherwise = world
 
-  aiMove :: World -> World
+  -- | Moves the second player's paddle according to where the ball is.
+  -- The bigger the player's score, the faster the paddle moves.
+  aiMove :: World -- ^ the current world
+    -> World -- ^ the world with updated paddle position
   aiMove world = world {game = (game world) {p2 = p2Bounded}}
     where
       dist = p2 (game world) - fst (ball (game world))
@@ -82,19 +124,28 @@ module App.Logic where
         |otherwise = p2 (game world)
       p2Bounded = max 50 . min 750 $ p2Unbounded
 
-  gameOver :: World -> World
+  -- | Checks if the game is over and changes the result accordingly.
+  -- The game ends once someone has scored 7 points.
+  gameOver :: World -- ^ the current world
+    -> World -- ^ the world with updated result.
   gameOver w
     |(p1Score w) == 7 = w {result = Player}
     |(p2Score w) == 7 = w {result = AI}
     |otherwise = w
 
-  updateWorld :: Float -> World -> IO World
+  -- | Updates the world according to the time passed.
+  updateWorld :: Float -- ^ time passed in seconds
+    -> World -- ^ the current world
+    -> IO World -- ^ the updated world wrapped in IO context
   updateWorld seconds world@(World _ _ _ Ongoing _ _) = do
       return $ gameOver . scoreCheck . aiMove $ moveBall seconds world
   updateWorld seconds world = do
       return $ world {idleTime = (idleTime world) + seconds}
 
-  eventHandler :: Event -> World -> IO World
+  -- | Updates the world according to an input event.
+  eventHandler :: Event -- ^ the event to be processed
+    -> World -- ^ the current world
+    -> IO World -- ^ the updated world wrapped in IO context
   eventHandler (EventMotion (x,y)) world@(World _ _ _ Ongoing _ _) = do
     let g = game world
     let g1 = g {p1 = max 50 . min 750 $ (y+400)}
@@ -116,7 +167,9 @@ module App.Logic where
   eventHandler _ world = do
     return world
 
-  timeAsText :: World -> String
+  -- | Returns the time of the game in a (minutes:seconds:miliseconds) format.
+  timeAsText :: World -- ^ the current world
+    -> String -- ^ the time of active playing
   timeAsText w = timeText where
     t = time w
     minutes = floor (t/60)
@@ -124,7 +177,9 @@ module App.Logic where
     rest =  floor . (100 * ) . snd . properFraction $ t
     timeText = (show minutes) ++ ":" ++ (show seconds) ++ ":" ++ (show rest)
 
-  scoreAsText :: World -> String
+  -- | Returns the current score of the world in a (player score):(AI score) format.
+  scoreAsText :: World -- ^ the current world
+    -> String -- ^ the current score
   scoreAsText world = score where
     s1 = show (p1Score world)
     s2 = show (p2Score world)
