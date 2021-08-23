@@ -23,7 +23,7 @@ module App.Logic where
   vel :: Float
   }
 
-  data Result = Ongoing | Player | AI | Idle | Pause deriving (Eq)
+  data Result = Ongoing | Player | AI | Idle | Paused deriving (Eq)
 
   type Record = String
 
@@ -101,8 +101,10 @@ module App.Logic where
     return $ world {game = g1}
   eventHandler (EventKey (Char 'r') Up _ _) world = do
     return $ startWorld {game = (game world) {p1 = p1 $ game world, vel = 300}, result = Ongoing, time = 0}
-  eventHandler (EventKey (Char 'p') Down _ _) world = do
-    return $ world {result = Idle}
+  eventHandler (EventKey (Char 'p') Up _ _) world@(World _ _ _ Ongoing _ _) = do
+    return $ world {result = Paused}
+  eventHandler (EventKey (Char 'p') Up _ _) world@(World _ _ _ Paused _ _) = do
+    return $ world {result = Ongoing}
   eventHandler (EventKey (Char 's') Down _ _) world
     |((result world == Player) || (result world == AI)) = do
       currDir <- getCurrentDirectory

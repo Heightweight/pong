@@ -5,7 +5,7 @@ cabal-version: 1.12
 -- see: https://github.com/sol/hpack
 
 name:           helloworld
-version:        1.0.3.4
+version:        1.0.3.5
 description:    Please see the README on GitHub at <https://github.com/githubuser/helloworld#readme>
 homepage:       https://github.com/heightweight/pong#readme
 bug-reports:    https://github.com/heightweight/pong/issues

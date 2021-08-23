@@ -40,11 +40,17 @@ module App.Draw.Render where
 
   idle :: Color -> IO Picture
   idle c = do
-    let start = color c . translate (-160) (100) . pictures $ zipWith (flip translate 0) (map (140*) [0..4]) [aS, aT, aA, aR, aT]
-    let pong = color c . translate (-160) (100) . pictures $ zipWith (flip translate 0) (map (150*) [0..4]) [aP, aO, aN, aG, aEx]
+    let pongPicture = color c . translate (-160) (100) . pictures $ zipWith (flip translate 0) (map (150*) [0..4]) [aP, aO, aN, aG, aEx]
     let width = 150
     let stripe = polygon [(-400 + width, -400), (-400, -400), (-400, -400 + width), (400 - width, 400), (400, 400), (400, 400 - width)]
-    return $ pictures [stripe,  rotate (-45) . scale 0.8 0.8 $ pong]
+    return $ pictures [stripe,  rotate (-45) . scale 0.8 0.8 $ pongPicture]
+
+  pause :: Color -> IO Picture
+  pause c = do
+    let pausePicture = color c . translate (-160) (100) . pictures $ zipWith (flip translate 0) (map (150*) [0..4]) [aP, aA, aU, aS, aE]
+    let width = 150
+    let stripe = polygon [(-400 + width, -400), (-400, -400), (-400, -400 + width), (400 - width, 400), (400, 400), (400, 400 - width)]
+    return $ pictures [stripe,  rotate (-45) . scale 0.8 0.8 $ pausePicture]
 
   layer :: Float -> Picture -> Picture
   layer n = pictures . zipWith ($) (map (\k -> translate k k)  [(-n)..n]) . replicate (floor n)
@@ -60,6 +66,10 @@ module App.Draw.Render where
     AI -> do
       leaders <- leaderboard
       return $ color white $ pictures [defeat world, translate (-200) (-100) . scale 0.2 0.2 $ leaders]
+    Paused -> do
+      let g = game world
+      front <- pause . greyN $ (1 - 2 * abs (0.5 - 2 * snd (properFraction (idleTime world))))
+      return $ color white $ pictures [(rotate (-90) $ translate (-400) (-400) $ pictures [playerDraw 1 $ p1 g, playerDraw 2 $ p2 g, ballDraw $ ball g]), translate (-400) (-400) . text . scoreAsText $ world, displayTime world, front]
     Idle -> do
       let g = game world
       front <- idle . greyN $ (1 - 2 * abs (0.5 - 2 * snd (properFraction (idleTime world))))
