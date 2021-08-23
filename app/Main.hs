@@ -7,8 +7,9 @@ import Control.Monad.Trans
 import System.Directory
 import Data.List.Split
 import Data.List
+import Data.Tuple
 
-data Result = Ongoing | Player | AI | Idle
+data Result = Ongoing | Player | AI | Idle deriving (Eq)
 
 data World = World {
 game :: Game,
@@ -76,7 +77,7 @@ recordUncurry r = (time, score) where
   score = read . last . last $ undone
 
 leaderboardSort :: [Record] -> [Record]
-leaderboardSort = sortOn (fst . recordUncurry)
+leaderboardSort = sortOn (swap . recordUncurry)
 
 leaderboard :: IO Picture
 leaderboard = do
@@ -194,13 +195,13 @@ eventHandler (EventKey (Char 'r') Up _ _) world = do
   return $ startWorld {game = (game world) {p1 = p1 $ game world, vel = 300}, result = Ongoing, time = 0}
 eventHandler (EventKey (Char 'p') Down _ _) world = do
   return $ world {result = Idle}
-eventHandler (EventKey (Char 's') Down _ _) world = case (result world) of
-  Player -> do
+eventHandler (EventKey (Char 's') Down _ _) world
+  |((result world == Player) || (result world == AI)) = do
     currDir <- getCurrentDirectory
     let file = currDir ++ "/records"
     appendFile file (timeAsText world ++ " " ++ (scoreAsText world) ++ "\n")
     return world
-  otherwise -> do
+  |otherwise = do
     return world
 eventHandler _ world = do
   return world
