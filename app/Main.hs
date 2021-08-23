@@ -1,9 +1,8 @@
 module Main where
 
-import Lib
-import Engine
-import Logic
-import Render
+import App.Engine
+import App.Logic
+import App.Draw.Render
 import Graphics.Gloss.Interface.IO.Game
 
 main :: IO ()

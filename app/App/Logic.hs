@@ -1,11 +1,34 @@
-module Logic where
+module App.Logic where
 
-  import Engine
   import Graphics.Gloss.Interface.IO.Game
+  import Graphics.Gloss.Data.Point (Point)
   import Data.List.Split
   import System.Directory
+  import Control.Monad (guard)
+
+  data World = World {
+  game :: Game,
+  p1Score :: Int,
+  p2Score :: Int,
+  result :: Result,
+  time :: Float,
+  idleTime :: Float
+  }
+
+  data Game = Game {
+  p1 :: Float,
+  p2 :: Float,
+  ball :: Point,
+  dir :: Float,
+  vel :: Float
+  }
+
+  data Result = Ongoing | Player | AI | Idle | Paused deriving (Eq)
 
   type Record = String
+
+  startWorld :: World
+  startWorld = (World (Game 400 400 (400, 400) 0.72 300) 0 0 Idle 0 0)
 
   recordUncurry :: Record -> (Float, Int)
   recordUncurry r = (time, score) where
@@ -72,14 +95,16 @@ module Logic where
       return $ world {idleTime = (idleTime world) + seconds}
 
   eventHandler :: Event -> World -> IO World
-  eventHandler (EventMotion (x,y)) world =  do
+  eventHandler (EventMotion (x,y)) world@(World _ _ _ Ongoing _ _) = do
     let g = game world
     let g1 = g {p1 = max 50 . min 750 $ (y+400)}
     return $ world {game = g1}
   eventHandler (EventKey (Char 'r') Up _ _) world = do
     return $ startWorld {game = (game world) {p1 = p1 $ game world, vel = 300}, result = Ongoing, time = 0}
-  eventHandler (EventKey (Char 'p') Down _ _) world = do
-    return $ world {result = Idle}
+  eventHandler (EventKey (Char 'p') Up _ _) world@(World _ _ _ Ongoing _ _) = do
+    return $ world {result = Paused}
+  eventHandler (EventKey (Char 'p') Up _ _) world@(World _ _ _ Paused _ _) = do
+    return $ world {result = Ongoing}
   eventHandler (EventKey (Char 's') Down _ _) world
     |((result world == Player) || (result world == AI)) = do
       currDir <- getCurrentDirectory
