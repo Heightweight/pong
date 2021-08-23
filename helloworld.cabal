@@ -42,6 +42,7 @@ library
 executable helloworld-exe
   main-is: Main.hs
   other-modules:
+      App.Draw.Alphabet
       App.Draw.Render
       App.Engine
       App.Logic

@@ -1,11 +1,34 @@
 module App.Logic where
 
-  import App.Engine
   import Graphics.Gloss.Interface.IO.Game
+  import Graphics.Gloss.Data.Point (Point)
   import Data.List.Split
   import System.Directory
+  import Control.Monad (guard)
+
+  data World = World {
+  game :: Game,
+  p1Score :: Int,
+  p2Score :: Int,
+  result :: Result,
+  time :: Float,
+  idleTime :: Float
+  }
+
+  data Game = Game {
+  p1 :: Float,
+  p2 :: Float,
+  ball :: Point,
+  dir :: Float,
+  vel :: Float
+  }
+
+  data Result = Ongoing | Player | AI | Idle | Pause deriving (Eq)
 
   type Record = String
+
+  startWorld :: World
+  startWorld = (World (Game 400 400 (400, 400) 0.72 300) 0 0 Idle 0 0)
 
   recordUncurry :: Record -> (Float, Int)
   recordUncurry r = (time, score) where
@@ -72,7 +95,7 @@ module App.Logic where
       return $ world {idleTime = (idleTime world) + seconds}
 
   eventHandler :: Event -> World -> IO World
-  eventHandler (EventMotion (x,y)) world =  do
+  eventHandler (EventMotion (x,y)) world@(World _ _ _ Ongoing _ _) = do
     let g = game world
     let g1 = g {p1 = max 50 . min 750 $ (y+400)}
     return $ world {game = g1}
