@@ -9,21 +9,28 @@ module App.Draw.Render where
   import Data.List.Split (splitOn)
   import Data.Tuple (swap)
 
-  playerDraw :: Int -> Float -> Picture
-  playerDraw 1 x = Polygon [(x-50, 780), (x+50, 780), (x+50, 800), (x-50, 800)]
-  playerDraw _ x = Polygon [(x-50, 20), (x+50, 20), (x+50, 0), (x-50, 0)]
+  playerDraw :: Int -> Float -> Float -> Picture
+  playerDraw 1 x t = pictures [polygon [(x-50, 780), (x+50, 780), (x+50, 800), (x-50, 800)], color newColor $ polygon [(x-45, 785), (x+45, 785), (x+45, 795), (x-45, 795)]] where
+    scale = snd (properFraction t)
+    newColor = bright $ mixColors scale (1-scale) blue green
+  playerDraw _ x t = pictures [polygon [(x-50, 20), (x+50, 20), (x+50, 0), (x-50, 0)], color newColor $ polygon [(x-45, 15), (x+45, 15), (x+45, 5), (x-45, 5)]] where
+    scale = snd (properFraction t)
+    newColor = bright $ mixColors scale (1-scale) blue green
 
-  ballDraw :: Point -> Picture
-  ballDraw (x, y) = Translate x y (Circle 10)
+  ballDraw :: Point -> Float -> Picture
+  ballDraw (x, y) t = translate x y $ pictures [(circleSolid 10), (color newColor $ circleSolid 5)] where
+    scale = snd (properFraction t)
+    newColor = bright $ mixColors scale (1-scale) blue green
 
-  displayTime :: World -> Picture
-  displayTime w = translate (0) (370) . scale 0.2 0.2 . text . timeAsText $ w
+  displayTime :: Float -> World -> Picture
+  displayTime t w = color newColor . translate (0) (370) . scale 0.2 0.2 . text . timeAsText $ w where
+    newColor = greyN $ (1 - 2 * abs (0.5 - 2 * snd (properFraction t)))
 
-  victory :: World -> Picture
-  victory world = pictures [translate (-350) 0 . text $ "You win!", translate 0 (-420) . displayTime $ world, translate (-200) (-50) . scale 0.2 0.2 . text $ "your time:"]
+  victory :: Float -> World -> Picture
+  victory t world = pictures [translate (-350) 0 . text $ "You win!", translate 0 (-420) . displayTime t $ world, translate (-200) (-50) . scale 0.2 0.2 . text $ "your time:"]
 
-  defeat :: World -> Picture
-  defeat world = pictures [translate (-350) 0 . text $ "You lose!", translate 0 (-420) . displayTime $ world, translate (-200) (-50) . scale 0.2 0.2 . text $ "your time:"]
+  defeat :: Float -> World -> Picture
+  defeat t world = pictures [translate (-350) 0 . text $ "You lose!", translate 0 (-420) . displayTime t $ world, translate (-200) (-50) . scale 0.2 0.2 . text $ "your time:"]
 
 
   leaderboardSort :: [Record] -> [Record]
@@ -59,18 +66,23 @@ module App.Draw.Render where
   worldDraw world = case (result world) of
     Ongoing -> do
       let g = game world
-      return $ color white $ pictures [(rotate (-90) $ translate (-400) (-400) $ pictures [playerDraw 1 $ p1 g, playerDraw 2 $ p2 g, ballDraw $ ball g]), translate (-400) (-400) . text . scoreAsText $ world, displayTime world]
+      let t = time world
+      return $ color white $ pictures [(rotate (-90) $ translate (-400) (-400) $ pictures [playerDraw 1 (p1 g) t, playerDraw 2 (p2 g) t, ballDraw (ball g) t]), translate (-400) (-400) . text . scoreAsText $ world, displayTime 0.25 world]
     Player -> do
+      let t = idleTime world
       leaders <- leaderboard
-      return $ color white $ pictures [victory world, translate (-200) (-100) . scale 0.2 0.2 $ leaders]
+      return $ color white $ pictures [victory t world, translate (-200) (-100) . scale 0.2 0.2 $ leaders]
     AI -> do
+      let t = idleTime world
       leaders <- leaderboard
-      return $ color white $ pictures [defeat world, translate (-200) (-100) . scale 0.2 0.2 $ leaders]
+      return $ color white $ pictures [defeat t world, translate (-200) (-100) . scale 0.2 0.2 $ leaders]
     Paused -> do
       let g = game world
       front <- pause . greyN $ (1 - 2 * abs (0.5 - 2 * snd (properFraction (idleTime world))))
-      return $ color white $ pictures [(rotate (-90) $ translate (-400) (-400) $ pictures [playerDraw 1 $ p1 g, playerDraw 2 $ p2 g, ballDraw $ ball g]), translate (-400) (-400) . text . scoreAsText $ world, displayTime world, front]
+      let t = idleTime world
+      return $ color white $ pictures [(rotate (-90) $ translate (-400) (-400) $ pictures [playerDraw 1 (p1 g) t, playerDraw 2 (p2 g) t, ballDraw (ball g) t]), translate (-400) (-400) . text . scoreAsText $ world, displayTime 0.25 world, front]
     Idle -> do
       let g = game world
+      let t = idleTime world
       front <- idle . greyN $ (1 - 2 * abs (0.5 - 2 * snd (properFraction (idleTime world))))
-      return $ color white $ pictures [(rotate (-90) $ translate (-400) (-400) $ pictures [playerDraw 1 $ p1 g, playerDraw 2 $ p2 g, ballDraw $ ball g]), translate (-400) (-400) . text . scoreAsText $ world, displayTime world, front]
+      return $ color white $ pictures [(rotate (-90) $ translate (-400) (-400) $ pictures [playerDraw 1 (p1 g) t, playerDraw 2 (p2 g) t, ballDraw (ball g) t]), translate (-400) (-400) . text . scoreAsText $ world, displayTime 0.25 world, front]
