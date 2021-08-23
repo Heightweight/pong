@@ -114,17 +114,17 @@ worldDraw :: World -> IO Picture
 worldDraw world = case (result world) of
   Ongoing -> do
     let g = game world
-    return $ pictures [(rotate (-90) $ translate (-400) (-400) $ pictures [playerDraw 1 $ p1 g, playerDraw 2 $ p2 g, ballDraw $ ball g]), translate (-400) (-400) . text . scoreAsText $ world, displayTime world]
+    return $ color white $ pictures [(rotate (-90) $ translate (-400) (-400) $ pictures [playerDraw 1 $ p1 g, playerDraw 2 $ p2 g, ballDraw $ ball g]), translate (-400) (-400) . text . scoreAsText $ world, displayTime world]
   Player -> do
     leaders <- leaderboard
-    return $ pictures [victory world, translate (-200) (-100) . scale 0.2 0.2 $ leaders]
+    return $ color white $ pictures [victory world, translate (-200) (-100) . scale 0.2 0.2 $ leaders]
   AI -> do
     leaders <- leaderboard
-    return $ pictures [defeat world, translate (-200) (-100) . scale 0.2 0.2 $ leaders]
+    return $ color white $ pictures [defeat world, translate (-200) (-100) . scale 0.2 0.2 $ leaders]
   Idle -> do
     let g = game world
     front <- idle . greyN . snd . properFraction . idleTime $ world
-    return $ pictures [(rotate (-90) $ translate (-400) (-400) $ pictures [playerDraw 1 $ p1 g, playerDraw 2 $ p2 g, ballDraw $ ball g]), translate (-400) (-400) . text . scoreAsText $ world, displayTime world, front]
+    return $ color white $ pictures [(rotate (-90) $ translate (-400) (-400) $ pictures [playerDraw 1 $ p1 g, playerDraw 2 $ p2 g, ballDraw $ ball g]), translate (-400) (-400) . text . scoreAsText $ world, displayTime world, front]
 --  Ongoing -> pictures [(rotate (-90) $ translate (-400) (-400) $ pictures [playerDraw 1 $ p1 g, playerDraw 2 $ p2 g, ballDraw $ ball g]), translate (-400) (-400) . text . scoreAsText $ world, displayTime world] where
 --    g = game world
 --  Player -> victory world
@@ -208,7 +208,7 @@ eventHandler _ world = do
 main :: IO ()
 main = playIO
   (InWindow "pong!" (800, 800) (0, 0))
-  white
+  black
   simulationRate
   startWorld
   worldDraw
