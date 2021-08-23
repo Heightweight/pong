@@ -3,15 +3,13 @@ module Main where
 import Lib
 import Graphics.Gloss
 import Graphics.Gloss.Interface.IO.Game
-import Text.Printf (printf)
-import System.IO.Unsafe (unsafePerformIO)
 import Control.Monad.Trans
-import Control.Monad.Trans.State
 import System.Directory
 import Data.List.Split
 import Data.List
+import Data.Tuple
 
-data Result = Ongoing | Player | AI | Idle
+data Result = Ongoing | Player | AI | Idle deriving (Eq)
 
 data World = World {
 game :: Game,
@@ -78,7 +76,7 @@ recordUncurry r = (time, score) where
   score = read . last . last $ undone
 
 leaderboardSort :: [Record] -> [Record]
-leaderboardSort = sortOn (fst . recordUncurry)
+leaderboardSort = sortOn (swap . recordUncurry)
 
 leaderboard :: IO Picture
 leaderboard = do
@@ -171,13 +169,13 @@ eventHandler (EventMotion (x,y)) world =  do
   return $ world {game = g1}
 eventHandler (EventKey (Char 'r') Up _ _) world = do
   return $ startWorld {game = (game world) {p1 = p1 $ game world}}
-eventHandler (EventKey (Char 's') Down _ _) world = case (result world) of
-  Player -> do
+eventHandler (EventKey (Char 's') Down _ _) world
+  |((result world == Player) || (result world == AI)) = do
     currDir <- getCurrentDirectory
     let file = currDir ++ "/records"
     appendFile file (timeAsText world ++ " " ++ (scoreAsText world) ++ "\n")
     return world
-  otherwise -> do
+  |otherwise = do
     return world
 eventHandler _ world = do
   return world
