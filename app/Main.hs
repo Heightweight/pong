@@ -16,7 +16,8 @@ game :: Game,
 p1Score :: Int,
 p2Score :: Int,
 result :: Result,
-time :: Float
+time :: Float,
+idleTime :: Float
 }
 
 data Game = Game {
@@ -29,7 +30,7 @@ vel :: Float
 -- (800, 800)
 
 startWorld :: World
-startWorld = (World (Game 400 400 (400, 400) 0.72 300) 0 0 Idle 0)
+startWorld = (World (Game 400 400 (400, 400) 0.72 300) 0 0 Idle 0 0)
 
 simulationRate :: Int
 simulationRate = 60
@@ -85,23 +86,46 @@ leaderboard = do
   content <- readFile file
   let records = lines content
   let top10 = take 10 . nub . leaderboardSort $ records
-  return $ pictures (zipWith ($) (map (\n -> translate 0 (n*50)) [1..10]) (map text top10))
+  return $ pictures (zipWith ($) (map (\n -> translate 0 (n*(-110))) [1..10]) (map text top10))
 
-idle :: IO Picture
-idle = undefined
+hBrick :: (Float, Float) -> Picture
+hBrick (x, y) = polygon [(x-10, y+10), (x-10, y-10), (x + 110, y-10), (x+110, y+10)]
 
+vBrick :: (Float, Float) -> Picture
+vBrick (x, y) = polygon [(x-10, y+10), (x+10, y+10), (x+10, y-110), (x-10, y-110)]
+
+dBrick :: (Float, Float) -> Picture
+dBrick (x, y) = polygon [(x, y+10), (x, y-10), (x+90, y-100), (x+110, y-100)]
+
+idle :: Color -> IO Picture
+idle c = do
+  let s = pictures [hBrick (-100, 0), hBrick (-100, -100), hBrick (-100, -200), vBrick (-100, 0), vBrick (0, -100)]
+  let t = pictures [hBrick (-100, 0), vBrick (-50, 0), vBrick (-50, -100)]
+  let a = pictures [hBrick (-100, 0), hBrick (-100, -100), vBrick (-100, 0), vBrick (-100, -100), vBrick (0, 0), vBrick (0, -100)]
+  let r = pictures [hBrick (-100, 0), hBrick (-100, -100), vBrick (-100, 0), vBrick (0, 0), vBrick (-100, -100), dBrick (-100, -100)]
+  let start = color c . translate (-160) (100) . pictures $ zipWith (flip translate 0) (map (140*) [0..4]) [s, t, a, r, t]
+  let width = 150
+  let stripe = polygon [(-400 + width, -400), (-400, -400), (-400, -400 + width), (400 - width, 400), (400, 400), (400, 400 - width)]
+  return $ pictures [stripe,  rotate (-45) . scale 0.8 0.8 $ start]
+
+layer :: Float -> Picture -> Picture
+layer n = pictures . zipWith ($) (map (\k -> translate k k)  [(-n)..n]) . replicate (floor n)
 
 worldDraw :: World -> IO Picture
 worldDraw world = case (result world) of
   Ongoing -> do
     let g = game world
-    return $ pictures [(rotate (-90) $ translate (-400) (-400) $ pictures [playerDraw 1 $ p1 g, playerDraw 2 $ p2 g, ballDraw $ ball g]), translate (-400) (-400) . text . scoreAsText $ world, displayTime world]
+    return $ color white $ pictures [(rotate (-90) $ translate (-400) (-400) $ pictures [playerDraw 1 $ p1 g, playerDraw 2 $ p2 g, ballDraw $ ball g]), translate (-400) (-400) . text . scoreAsText $ world, displayTime world]
   Player -> do
     leaders <- leaderboard
-    return $ pictures [victory world, translate (-200) (-100) . scale 0.2 0.2 $ leaders]
-  otherwise -> do
+    return $ color white $ pictures [victory world, translate (-200) (-100) . scale 0.2 0.2 $ leaders]
+  AI -> do
     leaders <- leaderboard
-    return $ pictures [defeat world, translate (-200) (-100) . scale 0.2 0.2 $ leaders]
+    return $ color white $ pictures [defeat world, translate (-200) (-100) . scale 0.2 0.2 $ leaders]
+  Idle -> do
+    let g = game world
+    front <- idle . greyN . snd . properFraction . idleTime $ world
+    return $ color white $ pictures [(rotate (-90) $ translate (-400) (-400) $ pictures [playerDraw 1 $ p1 g, playerDraw 2 $ p2 g, ballDraw $ ball g]), translate (-400) (-400) . text . scoreAsText $ world, displayTime world, front]
 --  Ongoing -> pictures [(rotate (-90) $ translate (-400) (-400) $ pictures [playerDraw 1 $ p1 g, playerDraw 2 $ p2 g, ballDraw $ ball g]), translate (-400) (-400) . text . scoreAsText $ world, displayTime world] where
 --    g = game world
 --  Player -> victory world
@@ -157,10 +181,10 @@ gameOver w
   |otherwise = w
 
 updateWorld :: Float -> World -> IO World
-updateWorld seconds world@(World _ _ _ Ongoing _ ) = do
+updateWorld seconds world@(World _ _ _ Ongoing _ _) = do
   return $ gameOver . scoreCheck . aiMove $ moveBall seconds world
-updateWorld _ world = do
-  return world
+updateWorld seconds world = do
+  return $ world {idleTime = (idleTime world) + seconds}
 
 eventHandler :: Event -> World -> IO World
 eventHandler (EventMotion (x,y)) world =  do
@@ -168,7 +192,9 @@ eventHandler (EventMotion (x,y)) world =  do
   let g1 = g {p1 = max 50 . min 750 $ (y+400)}
   return $ world {game = g1}
 eventHandler (EventKey (Char 'r') Up _ _) world = do
-  return $ startWorld {game = (game world) {p1 = p1 $ game world}}
+  return $ startWorld {game = (game world) {p1 = p1 $ game world, vel = 300}, result = Ongoing, time = 0}
+eventHandler (EventKey (Char 'p') Down _ _) world = do
+  return $ world {result = Idle}
 eventHandler (EventKey (Char 's') Down _ _) world
   |((result world == Player) || (result world == AI)) = do
     currDir <- getCurrentDirectory
@@ -183,7 +209,7 @@ eventHandler _ world = do
 main :: IO ()
 main = playIO
   (InWindow "pong!" (800, 800) (0, 0))
-  white
+  black
   simulationRate
   startWorld
   worldDraw
