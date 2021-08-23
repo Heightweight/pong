@@ -1,4 +1,4 @@
-module Engine where
+module App.Engine where
 
   import Graphics.Gloss.Data.Point.Arithmetic
 

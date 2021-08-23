@@ -1,7 +1,7 @@
-module Render where
+module App.Draw.Render where
 
-  import Engine
-  import Logic (recordUncurry, Record, scoreAsText, timeAsText)
+  import App.Engine
+  import App.Logic (recordUncurry, Record, scoreAsText, timeAsText)
   import Graphics.Gloss.Data.Picture
   import Graphics.Gloss.Data.Color
   import System.Directory (getCurrentDirectory)

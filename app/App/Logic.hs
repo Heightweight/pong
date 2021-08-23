@@ -1,6 +1,6 @@
-module Logic where
+module App.Logic where
 
-  import Engine
+  import App.Engine
   import Graphics.Gloss.Interface.IO.Game
   import Data.List.Split
   import System.Directory
