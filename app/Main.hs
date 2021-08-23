@@ -85,7 +85,7 @@ leaderboard = do
   content <- readFile file
   let records = lines content
   let top10 = take 10 . nub . leaderboardSort $ records
-  return $ pictures (zipWith ($) (map (\n -> translate 0 (n*(-100))) [1..10]) (map text top10))
+  return $ pictures (zipWith ($) (map (\n -> translate 0 (n*(-110))) [1..10]) (map text top10))
 
 hBrick :: (Float, Float) -> Picture
 hBrick (x, y) = polygon [(x-10, y+10), (x-10, y-10), (x + 110, y-10), (x+110, y+10)]
@@ -121,7 +121,10 @@ worldDraw world = case (result world) of
   AI -> do
     leaders <- leaderboard
     return $ pictures [defeat world, translate (-200) (-100) . scale 0.2 0.2 $ leaders]
-  Idle -> idle . greyN . snd . properFraction . idleTime $ world
+  Idle -> do
+    let g = game world
+    front <- idle . greyN . snd . properFraction . idleTime $ world
+    return $ pictures [(rotate (-90) $ translate (-400) (-400) $ pictures [playerDraw 1 $ p1 g, playerDraw 2 $ p2 g, ballDraw $ ball g]), translate (-400) (-400) . text . scoreAsText $ world, displayTime world, front]
 --  Ongoing -> pictures [(rotate (-90) $ translate (-400) (-400) $ pictures [playerDraw 1 $ p1 g, playerDraw 2 $ p2 g, ballDraw $ ball g]), translate (-400) (-400) . text . scoreAsText $ world, displayTime world] where
 --    g = game world
 --  Player -> victory world
