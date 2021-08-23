@@ -9,7 +9,7 @@ module App.Draw.Alphabet where
   vB (x, y) = polygon [(x-10, y+10), (x+10, y+10), (x+10, y-110), (x-10, y-110)]
 
   dB :: (Float, Float) -> (Float, Float) -> Picture
-  dB (x1, y1) (x2, y2) = polygon [(x1, y1+15), (x1, y1-15), (x2-15, y2), (x2+15, y2)]
+  dB (x1, y1) (x2, y2) = polygon [(x1, y1+13), (x1, y1-13), (x2-13, y2), (x2+13, y2)]
 
   aS :: Picture
   aS = pictures [hB (-100, 0), hB (-100, -100), hB (-100, -200), vB (-100, 0), vB (0, -100)]

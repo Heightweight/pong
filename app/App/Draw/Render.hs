@@ -62,5 +62,5 @@ module App.Draw.Render where
       return $ color white $ pictures [defeat world, translate (-200) (-100) . scale 0.2 0.2 $ leaders]
     Idle -> do
       let g = game world
-      front <- idle . greyN $ (1 - 2 * abs (0.5 - snd (properFraction (idleTime world))))
+      front <- idle . greyN $ (1 - 2 * abs (0.5 - 2 * snd (properFraction (idleTime world))))
       return $ color white $ pictures [(rotate (-90) $ translate (-400) (-400) $ pictures [playerDraw 1 $ p1 g, playerDraw 2 $ p2 g, ballDraw $ ball g]), translate (-400) (-400) . text . scoreAsText $ world, displayTime world, front]
