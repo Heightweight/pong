@@ -4,7 +4,7 @@ module App.Draw.Render where
   import App.Draw.Alphabet
   import Graphics.Gloss.Data.Picture
   import Graphics.Gloss.Data.Color
-  import System.Directory (getCurrentDirectory)
+  import System.Directory (getCurrentDirectory, doesFileExist)
   import Data.List (nub, sortOn)
   import Data.List.Split (splitOn)
   import Data.Tuple (swap)
@@ -52,26 +52,43 @@ module App.Draw.Render where
 
   -- | Sorts a list of game records.
   leaderboardSort :: [Record] -> [Record]
-  leaderboardSort = sortOn (swap . recordUncurry)
+  leaderboardSort = sortOn (\r -> (((-1) * (snd . recordUncurry $ r)), ((fst . recordUncurry $ r))))
 
   -- | The top-10 scores of all time as a picture wrapped in IO context.
   leaderboard :: IO Picture
   leaderboard = do
     currDir <- getCurrentDirectory
     let file = currDir ++ "/records"
-    content <- readFile file
+    exists <- doesFileExist file
+    content <- if exists
+      then readFile file
+      else return ""
     let records = lines content
     let top10 = take 10 . nub . leaderboardSort $ records
-    return $ pictures (zipWith ($) (map (\n -> translate 0 (n*(-110))) [1..10]) (map text top10))
+    let ld = "leaderboard:"
+    return $ pictures (zipWith ($) (map (\n -> translate 0 (n*(-110))) [1..11]) (map text (ld:top10)))
 
-  -- | Generates an idle-screen wrapped in IO context with a given color.
+  -- | Returns the first element of a quadruple
+  fst4 :: (a, a, a, a) -- ^ the quadraple
+    -> a -- its first element
+  fst4 (a, _, _, _) = a
+
+  borderTiling :: Float -> Picture
+  borderTiling f = pictures [rotate (-180) tilingTranslate, tilingTranslate] where
+    tile = polygon [(0, 0), (40, 40), (90, 40), (50, 0)]
+    tiling = pictures $ zipWith (flip translate 0) (map (100*) [(-10)..10]) $ replicate 21 tile
+    t = snd (properFraction f)
+    tilingTranslate = translate 0 150 . rotate (-45) . translate (100 * t) 0 $ tiling
+
+  -- | Generates an idle-screen wrapped in IO context with a given   color.
   idle :: Color -- ^ the color of the title text
     -> IO Picture -- ^ the resulting picture to be used in an IO context.
   idle c = do
     let pongPicture = color c . translate (-160) (100) . pictures $ zipWith (flip translate 0) (map (150*) [0..4]) [aP, aO, aN, aG, aEx]
     let width = 150
     let stripe = polygon [(-400 + width, -400), (-400, -400), (-400, -400 + width), (400 - width, 400), (400, 400), (400, 400 - width)]
-    return $ pictures [stripe,  rotate (-45) . scale 0.8 0.8 $ pongPicture]
+    let prompt = translate 0 (-50) . rotate (-45) . scale 0.2 0.2 . text $ "press 'r' to start"
+    return $ pictures [stripe,  rotate (-45) . scale 0.8 0.8 $ pongPicture, translate 0 (-200) prompt]
 
   -- | Generates a pause-screen wrapped in IO context with a given color.
   pause :: Color -- ^ the color of the title text
@@ -80,7 +97,8 @@ module App.Draw.Render where
     let pausePicture = color c . translate (-160) (100) . pictures $ zipWith (flip translate 0) (map (150*) [0..4]) [aP, aA, aU, aS, aE]
     let width = 150
     let stripe = polygon [(-400 + width, -400), (-400, -400), (-400, -400 + width), (400 - width, 400), (400, 400), (400, 400 - width)]
-    return $ pictures [stripe,  rotate (-45) . scale 0.8 0.8 $ pausePicture]
+    let prompt = translate 0 (-50) . rotate (-45) . scale 0.2 0.2 . text $ "press 'p' to continue"
+    return $ pictures [stripe,  rotate (-45) . scale 0.8 0.8 $ pausePicture, translate 0 (-200) prompt]
 
   -- | A picture of a world wrapped in IO context.
   worldDraw :: World -- ^ the current world
@@ -93,18 +111,24 @@ module App.Draw.Render where
     Player -> do
       let t = idleTime world
       leaders <- leaderboard
-      return $ color white $ pictures [victory t world, translate (-200) (-100) . scale 0.2 0.2 $ leaders]
+      let newColor = greyN $ (1 - 2 * abs (0.5 - 2 * snd (properFraction t)))
+      let prompt = color newColor . translate (-200) (-80) . scale 0.2 0.2 . text $  "press 'r' to restart, 's' to save"
+      return $ color white $ pictures [prompt, victory t world, translate (-200) (-100) . scale 0.2 0.2 $ leaders]
     AI -> do
       let t = idleTime world
       leaders <- leaderboard
-      return $ color white $ pictures [defeat t world, translate (-200) (-100) . scale 0.2 0.2 $ leaders]
+      let newColor = greyN $ (1 - 2 * abs (0.5 - 2 * snd (properFraction t)))
+      let prompt = color newColor . translate (-200) (-80) . scale 0.2 0.2 . text $  "press 'r' to restart, 's' to save"
+      return $ color white $ pictures [prompt, defeat t world, translate (-200) (-100) . scale 0.2 0.2 $ leaders]
     Paused -> do
       let g = game world
       front <- pause . greyN $ (1 - 2 * abs (0.5 - 2 * snd (properFraction (idleTime world))))
       let t = idleTime world
-      return $ color white $ pictures [(rotate (-90) $ translate (-400) (-400) $ pictures [playerDraw 1 (p1 g) t, playerDraw 2 (p2 g) t, ballDraw (ball g) t]), translate (-400) (-400) . text . scoreAsText $ world, displayTime 0.25 world, front]
+      let tilingUpper = borderTiling t
+      return $ color white $ pictures [tilingUpper, (rotate (-90) $ translate (-400) (-400) $ pictures [playerDraw 1 (p1 g) t, playerDraw 2 (p2 g) t, ballDraw (ball g) t]), translate (-400) (-400) . text . scoreAsText $ world, displayTime 0.25 world, front]
     Idle -> do
       let g = game world
       let t = idleTime world
+      let tilingUpper = borderTiling t
       front <- idle . greyN $ (1 - 2 * abs (0.5 - 2 * snd (properFraction (idleTime world))))
-      return $ color white $ pictures [(rotate (-90) $ translate (-400) (-400) $ pictures [playerDraw 1 (p1 g) t, playerDraw 2 (p2 g) t, ballDraw (ball g) t]), translate (-400) (-400) . text . scoreAsText $ world, displayTime 0.25 world, front]
+      return $ color white $ pictures [tilingUpper, (rotate (-90) $ translate (-400) (-400) $ pictures [playerDraw 1 (p1 g) t, playerDraw 2 (p2 g) t, ballDraw (ball g) t]), translate (-400) (-400) . text . scoreAsText $ world, displayTime 0.25 world, front]

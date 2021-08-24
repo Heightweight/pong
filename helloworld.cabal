@@ -64,9 +64,10 @@ test-suite engine-test
   type: exitcode-stdio-1.0
   main-is: EngineTest.hs
   other-modules:
+      LogicTest
       Paths_helloworld
   hs-source-dirs:
-      test, app
+      test
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       base >=4.7 && <5
@@ -84,9 +85,10 @@ test-suite logic-test
   type: exitcode-stdio-1.0
   main-is: LogicTest.hs
   other-modules:
+      EngineTest
       Paths_helloworld
   hs-source-dirs:
-      test, app
+      test
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       QuickCheck

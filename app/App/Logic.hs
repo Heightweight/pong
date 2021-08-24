@@ -79,29 +79,70 @@ module App.Logic where
     -> Float -- ^ the resulting coordinate
   normalize f = max 11 . min 789 $ f
 
+  -- | Checks for collision on the x-axis and changes the direction of the ball.
+  collisionX :: Float -- ^ time passed in seconds
+    -> World -- ^ the current world
+    -> World -- ^ the updated world
+  collisionX f w = w {game = g {dir = dirn}} where
+    g = game w
+    xn = fst (ball g) + f * vel g * cos (dir g)
+    dirn
+      |(max 10 $ min 790 xn) == xn = dir g
+      |otherwise = pi - dir g
+  -- | Checks for collision on the y-axis and changes the direction of the ball.
+  collisionY :: Float -- ^ time passed in seconds
+    -> World -- ^ the current world
+    -> World -- ^ the updated world
+  collisionY f w = w {game = (game w) {dir = dirn}} where
+    g = game w
+    yn = snd (ball g) + f * vel g * sin (dir g)
+    dirn
+      |(max 10 $ min 790 yn) == yn = dir g
+      |otherwise = - dir g
+
+  -- | Checks for collision with the player paddle and changes the direction of the ball.
+  collisionPlayerPaddle :: Float -- ^ time passed in seconds
+    -> World -- ^ the current world
+    -> World -- ^ the updated world
+  collisionPlayerPaddle f w = w {game = g {dir = dirn}} where
+    g = game w
+    xn = fst (ball g) + f * vel g * cos (dir g)
+    yn = snd (ball g) + f * vel g * sin (dir g)
+    dirn
+      |max (p1 g - 50) (min (p1 g + 50) xn) == xn && (yn >= 770) = - paddleAngle (p1 g) xn
+      |otherwise = dir g
+  -- | Checks for collision with the AI paddle and changes the direction of the ball.
+  collisionAIPaddle :: Float -- ^ time passed
+    -> World -- ^ the current world
+    -> World -- ^ the updated world
+  collisionAIPaddle f w = w {game = g {dir = dirn}} where
+    g = game w
+    xn = fst (ball g) + f * vel g * cos (dir g)
+    yn = snd (ball g) + f * vel g * sin (dir g)
+    dirn
+      |max (p2 g - 50) (min (p2 g + 50) xn) == xn && (yn <= 30) = paddleAngle (p2 g) xn
+      |otherwise = dir g
+
+  -- Changes the coordinates of the ball do get rid of any collision.
+  popBall :: World -- ^ the current world
+    -> World -- ^ the updated world
+  popBall w = w {game = (game w) {ball = (normalize(fst . ball . game $ w), normalize(snd . ball . game $ w))}}
+
+  -- Upticks the time by the amount passed.
+  tickTime :: Float -- ^ time passed in seconds
+    -> World -- ^ the current world
+    -> World -- ^ the updated world
+  tickTime t w = w {time = (time w) + t}
+
   -- | Moves the ball in a set direction for a given time accounting for collisions.
   moveBall :: Float -- ^ time passed in seconds
     -> World -- ^ the world to update
     -> World -- ^ the resulting world
-  moveBall f w = w {game = (game w) {dir = dirn, ball = (xt, yt)}, time = (time w) + f}
+  moveBall f w = w {game = (game w) {ball = (xt, yt)}}
    where
     g = game w
-    xn = fst (ball g) + f * vel g * cos (dir g)
-    yn = snd (ball g) + f * vel g * sin (dir g)
-    dirx
-      |(max 10 $ min 790 xn) == xn = 1
-      |otherwise = -1
-    diry
-      |(max 10 $ min 790 yn) == yn = 1
-      |otherwise = -1
-    dirn
-      |dirx == -1 = pi - diry * dir g
-      |(diry == -1) && (dirx == 1) = diry * dir g
-      |max (p1 g - 50) (min (p1 g + 50) xn) == xn && (yn >= 770) = - paddleAngle (p1 g) xn
-      |max (p2 g - 50) (min (p2 g + 50) xn) == xn && (yn <= 30) = paddleAngle (p2 g) xn
-      |otherwise = (dir g)
-    xt = (f * vel g * cos dirn) + normalize (fst (ball g))
-    yt = (f * vel g * sin dirn) + normalize (snd (ball g))
+    xt = (f * vel g * cos (dir g)) + normalize (fst (ball g))
+    yt = (f * vel g * sin (dir g)) + normalize (snd (ball g))
 
   -- | Changes the score and the game state if any player scores.
   -- Also changes the speed of the ball for each point scored by the player.
@@ -138,10 +179,19 @@ module App.Logic where
   updateWorld :: Float -- ^ time passed in seconds
     -> World -- ^ the current world
     -> IO World -- ^ the updated world wrapped in IO context
-  updateWorld seconds world@(World _ _ _ Ongoing _ _) = do
-      return $ gameOver . scoreCheck . aiMove $ moveBall seconds world
-  updateWorld seconds world = do
-      return $ world {idleTime = (idleTime world) + seconds}
+  updateWorld s w@(World _ _ _ Ongoing _ _) = do
+      return $ gameOver
+        . scoreCheck
+        . aiMove
+        . (moveBall s)
+        . (tickTime s)
+        . (popBall)
+        . (collisionAIPaddle s)
+        . (collisionPlayerPaddle s)
+        . (collisionX s)
+        . (collisionY s) $ w
+  updateWorld s w = do
+      return $ w {idleTime = (idleTime w) + s}
 
   -- | Updates the world according to an input event.
   eventHandler :: Event -- ^ the event to be processed
@@ -165,8 +215,8 @@ module App.Logic where
       return world
     |otherwise = do
       return world
-  eventHandler _ world = do
-    return world
+  eventHandler _ w = do
+    return w
 
   -- | Returns the time of the game in a (minutes:seconds:miliseconds) format.
   timeAsText :: World -- ^ the current world
