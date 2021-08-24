@@ -44,7 +44,7 @@ executables:
 tests:
   engine-test:
     main:                EngineTest.hs
-    source-dirs:         test, app
+    source-dirs:         test
     ghc-options:
     - -threaded
     - -rtsopts
@@ -55,7 +55,7 @@ tests:
     - tasty-hunit
   logic-test:
     main:                LogicTest.hs
-    source-dirs:         test, app
+    source-dirs:         test
     ghc-options:
     - -threaded
     - -rtsopts
