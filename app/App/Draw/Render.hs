@@ -73,7 +73,9 @@ module App.Draw.Render where
     -> a -- its first element
   fst4 (a, _, _, _) = a
 
-  borderTiling :: Float -> Picture
+  -- | Generates a tiling for the idle/pause screen.
+  borderTiling :: Float -- ^ current time
+    -> Picture -- ^ the resulting tiling
   borderTiling f = pictures [rotate (-180) tilingTranslate, tilingTranslate] where
     tile = polygon [(0, 0), (40, 40), (90, 40), (50, 0)]
     tiling = pictures $ zipWith (flip translate 0) (map (100*) [(-10)..10]) $ replicate 21 tile
