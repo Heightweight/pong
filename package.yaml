@@ -42,12 +42,27 @@ executables:
     - helloworld
 
 tests:
-  helloworld-test:
-    main:                Spec.hs
-    source-dirs:         test
+  engine-test:
+    main:                EngineTest.hs
+    source-dirs:         test, app
     ghc-options:
     - -threaded
     - -rtsopts
     - -with-rtsopts=-N
     dependencies:
     - helloworld
+    - tasty
+    - tasty-hunit
+  logic-test:
+    main:                LogicTest.hs
+    source-dirs:         test, app
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - helloworld
+    - tasty
+    - tasty-hunit
+    - tasty-quickcheck
+    - QuickCheck

@@ -18,7 +18,8 @@ module App.Logic where
   dir :: Float,
   -- | the velocity of the ball
   vel :: Float
-  }
+  } deriving (Show)
+
 
   -- | Describes the result and/or state of the current world.
   data Result
@@ -31,7 +32,7 @@ module App.Logic where
     -- | for games that have not been started yet
     | Idle
     -- | for paused games
-    | Paused deriving (Eq)
+    | Paused deriving (Eq, Show)
 
   -- | Describes the world of the game. Holds the game data and the score, time and result of the game.
   data World = World {
@@ -47,7 +48,7 @@ module App.Logic where
   time :: Float,
   -- | the time of inactivity (only when the game is not being played)
   idleTime :: Float
-  }
+  } deriving (Show)
   -- | Used for storing the time and result of a finished game.
   type Record = String
 
@@ -65,7 +66,7 @@ module App.Logic where
     time :: Float
     score :: Int
     time = 60*(read ((head undone) !! 0)) + read ((head undone) !! 1) + (read ((head undone) !! 2))/100
-    score = read . last . last $ undone
+    score = read . head . last $ undone
 
   -- | Returns the bounce angle of a ball hitting a paddle.
   paddleAngle :: Float -- ^ the x-coordinate of the paddle
